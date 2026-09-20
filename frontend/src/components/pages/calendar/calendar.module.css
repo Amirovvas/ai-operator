@@ -1,0 +1,616 @@
+.calendar {
+  width: 100%;
+  height: 100vh;
+  background: #ffffff;
+  color: #1f2937;
+  overflow: hidden;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+  height: 118px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 28px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.todayButton {
+  height: 47px;
+  padding: 0 20px;
+
+  background: #ffffff;
+  border: 1px solid #d9dde3;
+  border-radius: 9px;
+
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.todayButton:hover {
+  background: #f8fafc;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.navigation button {
+  width: 25px;
+  height: 30px;
+
+  border: none;
+  background: transparent;
+
+  color: #9ca3af;
+  font-size: 27px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.navigation button:hover {
+  color: #111827;
+}
+
+.monthTitle {
+  margin: 0;
+
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+
+  text-transform: capitalize;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconButton {
+  width: 38px;
+  height: 38px;
+
+  border: none;
+  background: transparent;
+
+  color: #6b7280;
+  font-size: 22px;
+
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+
+.viewButton {
+  height: 40px;
+  padding: 0 14px;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.viewButton span {
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+/* =========================
+   CONTENT
+========================= */
+
+.calendarContent {
+  height: calc(100vh - 118px);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 345px;
+}
+
+/* =========================
+   MONTH CALENDAR
+========================= */
+
+.monthCalendar {
+  min-width: 0;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   WEEK DAYS
+========================= */
+
+.weekDays {
+  height: 48px;
+
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.weekDay {
+  display: flex;
+  align-items: center;
+
+  padding-left: 14px;
+
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* =========================
+   DAYS
+========================= */
+
+.daysGrid {
+  flex: 1;
+
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+
+  min-height: 0;
+}
+
+.dayCell {
+  position: relative;
+
+  min-width: 0;
+  min-height: 0;
+
+  padding: 14px 14px;
+
+  border-right: 1px solid #edf0f2;
+  border-bottom: 1px solid #edf0f2;
+
+  background: #ffffff;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease;
+}
+
+.dayCell:hover {
+  background: #fafafa;
+}
+
+.otherMonth {
+  background: #fafafa;
+}
+
+.otherMonth .dayNumber {
+  color: #aeb4bb;
+}
+
+.selectedCell {
+  background: #f7f7f8;
+}
+
+.dayNumberWrapper {
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+}
+
+.dayNumber {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.todayNumber {
+  background: #1f2937;
+  color: #ffffff;
+}
+
+/* =========================
+   EVENTS
+========================= */
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  margin-top: 8px;
+}
+
+.event {
+  width: 100%;
+  min-height: 28px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 8px;
+
+  border-radius: 5px;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.eventBlue {
+  color: #2563eb;
+  background: #eef5ff;
+}
+
+.eventPurple {
+  color: #7c3aed;
+  background: #f4efff;
+}
+
+.eventGreen {
+  color: #32935d;
+  background: #edf9f1;
+}
+
+.eventOrange {
+  color: #c56a32;
+  background: #fff5e9;
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar {
+  height: 100%;
+
+  border-left: 1px solid #e5e7eb;
+
+  background: #ffffff;
+
+  overflow-y: auto;
+}
+
+.sidebarHeader {
+  padding: 34px 26px 22px;
+
+  border-bottom: 1px solid #f0f1f2;
+}
+
+.sidebarWeekday {
+  display: block;
+
+  margin-bottom: 12px;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+}
+
+.sidebarHeader h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.sidebarEvents {
+  padding: 14px 16px;
+}
+
+.sidebarEvent {
+  min-height: 78px;
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 13px;
+
+  padding: 18px 14px;
+
+  margin-bottom: 10px;
+
+  border: 1px solid #edf0f2;
+  border-radius: 13px;
+
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.eventDot {
+  width: 11px;
+  height: 11px;
+
+  flex-shrink: 0;
+
+  margin-top: 5px;
+
+  border-radius: 50%;
+}
+
+.dotBlue {
+  background: #2864d7;
+}
+
+.dotPurple {
+  background: #7c3aed;
+}
+
+.dotGreen {
+  background: #3aa36b;
+}
+
+.dotOrange {
+  background: #e67e3d;
+}
+
+.sidebarEvent div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sidebarEvent strong {
+  color: #374151;
+
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.sidebarEvent span:not(.eventDot) {
+  color: #9ca3af;
+
+  font-size: 14px;
+}
+
+.noEvents {
+  padding: 30px 10px;
+
+  color: #9ca3af;
+
+  font-size: 14px;
+  text-align: center;
+}
+
+/* =========================
+   CREATE / EDIT / DELETE
+========================= */
+
+.newButton {
+  height: 40px;
+  padding: 0 14px;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  background: #111827;
+  border: 1px solid #111827;
+  border-radius: 8px;
+
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.newButton:hover {
+  background: #1f2937;
+}
+
+.addEventButton {
+  margin-top: 16px;
+  height: 34px;
+  padding: 0 12px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.addEventButton:hover {
+  background: #f8fafc;
+}
+
+/* .sidebarEvent div уже задаёт колонку всем вложенным div — перебиваем */
+.sidebarEvent .eventText {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebarEvent .eventActions {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 2px;
+}
+
+.eventActions button {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.eventActions button:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.eventActions .deleteAction:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.event {
+  cursor: pointer;
+}
+
+.errorBox {
+  margin-bottom: 10px;
+  padding: 9px 12px;
+
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  .calendarContent {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .header {
+    padding: 0 18px;
+  }
+
+  .headerRight .iconButton,
+  .headerRight .viewButton {
+    display: none;
+  }
+
+  .monthTitle {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    height: 90px;
+  }
+
+  .calendarContent {
+    height: calc(100vh - 90px);
+  }
+
+  .headerLeft {
+    gap: 10px;
+  }
+
+  .todayButton {
+    height: 40px;
+    padding: 0 13px;
+
+    font-size: 14px;
+  }
+
+  .navigation {
+    gap: 4px;
+  }
+
+  .monthTitle {
+    font-size: 18px;
+  }
+
+  .weekDays {
+    height: 40px;
+  }
+
+  .weekDay {
+    padding-left: 7px;
+    font-size: 10px;
+  }
+
+  .dayCell {
+    padding: 8px 5px;
+  }
+
+  .dayNumber {
+    width: 25px;
+    height: 25px;
+
+    font-size: 12px;
+  }
+
+  .events {
+    margin-top: 4px;
+    gap: 3px;
+  }
+
+  .event {
+    min-height: 20px;
+
+    padding: 0 4px;
+
+    font-size: 9px;
+  }
+}

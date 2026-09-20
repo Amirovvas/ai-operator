@@ -1,0 +1,252 @@
+.page {
+  display: flex;
+
+  height: 100vh;
+
+  background: #fff;
+}
+
+/* =========================
+   LIST
+========================= */
+
+.list {
+  width: 320px;
+  flex-shrink: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  border-right: 1px solid #e5e5e5;
+}
+
+.listHeader {
+  height: 64px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 18px;
+
+  border-bottom: 1px solid #eee;
+}
+
+.listHeader h1 {
+  margin: 0;
+
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.newButton {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #111;
+  color: #fff;
+
+  cursor: pointer;
+}
+
+.newButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 12px 14px;
+  padding: 8px 10px;
+
+  border: 1px solid #eee;
+  border-radius: 8px;
+
+  color: #999;
+}
+
+.search input {
+  width: 100%;
+
+  border: 0;
+  outline: none;
+
+  font-size: 13px;
+}
+
+.items {
+  overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.hint {
+  padding: 14px;
+
+  color: #999;
+  font-size: 12px;
+}
+
+.item {
+  width: 100%;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  padding: 12px 14px;
+
+  border: 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  background: #fff;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.item:hover {
+  background: #f8f8f8;
+}
+
+.itemActive {
+  background: #f2f2f2;
+}
+
+.itemTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.itemTop strong {
+  overflow: hidden;
+
+  color: #111;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.itemTop time {
+  flex-shrink: 0;
+
+  color: #999;
+  font-size: 10px;
+}
+
+.item p {
+  overflow: hidden;
+
+  margin: 0;
+
+  color: #999;
+
+  font-size: 12px;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   EDITOR
+========================= */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+
+  min-width: 0;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+
+  color: #bbb;
+  font-size: 13px;
+}
+
+.editorToolbar {
+  height: 64px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+
+  padding: 0 24px;
+
+  border-bottom: 1px solid #eee;
+}
+
+.saveState {
+  color: #999;
+  font-size: 11px;
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  background: transparent;
+  color: #999;
+
+  cursor: pointer;
+}
+
+.deleteButton:hover {
+  color: #c0392b;
+}
+
+.titleInput {
+  margin: 24px 32px 0;
+
+  border: 0;
+  outline: none;
+
+  color: #111;
+
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+
+.contentInput {
+  flex: 1;
+
+  margin: 16px 32px 32px;
+
+  border: 0;
+  outline: none;
+  resize: none;
+
+  color: #444;
+
+  font-size: 14px;
+  line-height: 1.8;
+  font-family: inherit;
+}

@@ -1,0 +1,227 @@
+.container {
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 24px;
+
+  background: #f8fafc;
+}
+
+/* =========================
+   MAIN CARD
+========================= */
+
+.mainContainer {
+  width: 100%;
+  max-width: 430px;
+
+  padding: 40px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.03),
+    0 15px 35px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.formSection h1 {
+  margin: 0 0 8px;
+
+  text-align: center;
+
+  color: #111827;
+
+  font-size: 30px;
+  font-weight: 700;
+
+  letter-spacing: -0.5px;
+}
+
+.formSection > p {
+  margin: 0 0 30px;
+
+  text-align: center;
+
+  color: #6b7280;
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================
+   FORM
+========================= */
+
+.form {
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+/* =========================
+   INPUT GROUP
+========================= */
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.inputGroup label {
+  color: #374151;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* =========================
+   INPUT
+========================= */
+
+.inputGroup input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 12px 13px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: #111827;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.inputGroup input:hover {
+  border-color: #9ca3af;
+}
+
+.inputGroup input:focus {
+  border-color: #111827;
+
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.inputGroup input::placeholder {
+  color: #9ca3af;
+}
+
+/* =========================
+   LOGIN BUTTON
+========================= */
+
+.button {
+  width: 100%;
+
+  margin-top: 4px;
+
+  padding: 13px 16px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #111827;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.button:hover {
+  background: #000000;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   SIGN UP
+========================= */
+
+.loginText {
+  margin-top: 24px !important;
+  margin-bottom: 0 !important;
+
+  text-align: center;
+
+  color: #6b7280;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.loginText a {
+  color: #111827;
+
+  font-weight: 600;
+
+  text-decoration: none;
+
+  transition: color 0.2s ease;
+}
+
+.loginText a:hover {
+  color: #6b7280;
+
+  text-decoration: underline;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 500px) {
+  .container {
+    padding: 16px;
+  }
+
+  .mainContainer {
+    padding: 30px 22px;
+
+    border-radius: 12px;
+  }
+
+  .formSection h1 {
+    font-size: 26px;
+  }
+
+  .formSection > p {
+    margin-bottom: 24px;
+  }
+
+  .form {
+    gap: 16px;
+  }
+}
