@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function GoogleSuccess() {
+function GoogleSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -14,12 +14,22 @@ export default function GoogleSuccess() {
 
     if (accessToken) {
       localStorage.setItem("accessToken", accessToken);
-      // сайдбар мог уже запросить профиль до сохранения токена
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      queryClient.invalidateQueries({
+        queryKey: ["profile"],
+      });
 
       router.replace("/");
     }
   }, [searchParams, router, queryClient]);
 
   return <div>Google login...</div>;
+}
+
+export default function GoogleSuccess() {
+  return (
+    <Suspense fallback={<div>Google login...</div>}>
+      <GoogleSuccessContent />
+    </Suspense>
+  );
 }
