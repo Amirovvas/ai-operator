@@ -36,7 +36,7 @@ export const AppSidebar = () => {
   // подсветка текущей страницы (раньше её изображал :focus, который на телефоне
   // залипал на первом пункте шторки)
   const navClass = (href: string) => {
-    const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+    const active = pathname.startsWith(href);
     return active ? "btn active" : "btn";
   };
 
@@ -67,7 +67,7 @@ export const AppSidebar = () => {
         </div>
 
         <div className="menu">
-          <SidebarMenuButton className={navClass("/")} render={<Link href="/" />}>
+          <SidebarMenuButton className={navClass("/dashboard")} render={<Link href="/dashboard" />}>
             <span className="icon-placeholder">
               <MdOutlineDashboard />
             </span>

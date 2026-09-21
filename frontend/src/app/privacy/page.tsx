@@ -9,7 +9,6 @@ export default function PrivacyPage() {
       <article className={css.content}>
         {" "}
         <h1>Privacy Policy</h1>
-        ```
         <p>Last updated: September 21, 2026</p>
         <h2>1. Introduction</h2>
         <p>
@@ -36,14 +35,14 @@ export default function PrivacyPage() {
         <h2>4. How We Use Your Information</h2>
         <p>
           We use your information to authenticate your account, provide the
-          application's features, process your requests, and improve the
+          application&apos;s features, process your requests, and improve the
           reliability and functionality of the application.
         </p>
         <h2>5. Data Sharing</h2>
         <p>
           We do not sell your personal information. We do not share your
           personal information with third parties except when necessary to
-          provide the application's services or when required by law.
+          provide the application&apos;s services or when required by law.
         </p>
         <h2>6. Data Security</h2>
         <p>
@@ -54,7 +53,7 @@ export default function PrivacyPage() {
         <h2>7. Your Choices</h2>
         <p>
           You can stop using AI Operator or disconnect your Google Account at
-          any time. You can also revoke the application's access to your Google
+          any time. You can also revoke the application&apos;s access to your Google
           Account through your Google Account settings.
         </p>
         <h2>8. Contact</h2>

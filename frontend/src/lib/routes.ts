@@ -1,5 +1,7 @@
-// страницы, доступные без авторизации: вход, регистрация, восстановление
-// пароля и возврат из Google OAuth (там токен только сохраняется)
+// Страницы, доступные без авторизации: главная (лендинг — её обязана видеть
+// проверка Google OAuth), вход, регистрация, восстановление пароля, возврат
+// из Google OAuth (там токен только сохраняется), политика и условия.
+// Всё остальное — закрытая часть приложения (Dashboard и т. д.).
 export const PUBLIC_ROUTES = [
   "/login",
   "/register",
@@ -9,8 +11,13 @@ export const PUBLIC_ROUTES = [
   "/terms",
 ];
 
+// куда попадает пользователь после успешного входа
+export const HOME_AFTER_LOGIN = "/dashboard";
+
 export const isPublicRoute = (pathname: string | null | undefined) =>
   !!pathname &&
-  PUBLIC_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  // "/" — только точное совпадение, иначе публичным стал бы весь сайт
+  (pathname === "/" ||
+    PUBLIC_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    ));

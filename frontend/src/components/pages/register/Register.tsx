@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
+import { HOME_AFTER_LOGIN } from "@/lib/routes";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 interface IForm {
   name: string;
@@ -20,7 +21,7 @@ const Register = () => {
   // уже залогиненный пользователь не должен видеть форму регистрации
   useEffect(() => {
     if (localStorage.getItem("accessToken")) {
-      replace("/");
+      replace(HOME_AFTER_LOGIN);
     }
   }, [replace]);
 

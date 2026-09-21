@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { HOME_AFTER_LOGIN } from "@/lib/routes";
 
 function GoogleSuccessContent() {
   const router = useRouter();
@@ -19,7 +20,7 @@ function GoogleSuccessContent() {
         queryKey: ["profile"],
       });
 
-      router.replace("/");
+      router.replace(HOME_AFTER_LOGIN);
     }
   }, [searchParams, router, queryClient]);
 

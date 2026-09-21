@@ -7,21 +7,13 @@ import { AppSidebar } from "@/components/layout/appSidebar/AppSidebar";
 import { LogoMark } from "@/components/layout/Logo";
 import { isPublicRoute } from "@/lib/routes";
 
-import React, { useEffect, useState, useSyncExternalStore } from "react";
+import React, { useEffect, useState } from "react";
+import { useAuthStatus } from "@/hooks/auth/useHasToken";
 import { usePathname, useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 interface IProps {
   children: React.ReactNode;
 }
-
-// токен лежит в localStorage — читаем его как внешнее хранилище (в том числе
-// из других вкладок через событие storage), без setState внутри эффекта
-const subscribeToken = (onChange: () => void) => {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-};
-const getHasToken = () => !!localStorage.getItem("accessToken");
-const getServerHasToken = () => false;
 
 // Защита маршрутов: без accessToken любая страница, кроме входа/регистрации,
 // сразу отправляет на /login. Пока проверка не завершилась, закрытые страницы
@@ -32,19 +24,18 @@ const AuthGate = ({ children }: IProps) => {
   const isPublic = isPublicRoute(pathname);
   // снимок перечитывается при каждом рендере (смена маршрута после логина)
   // и при выходе в другой вкладке — тогда закрытая страница сразу уходит на /login
-  const isAuthorized = useSyncExternalStore(
-    subscribeToken,
-    getHasToken,
-    getServerHasToken,
-  );
+  const authStatus = useAuthStatus();
+  const isAuthorized = authStatus === "in";
 
   useEffect(() => {
-    if (!isAuthorized && !isPublic) {
+    // только когда статус уже известен: в гидратационном рендере он "unknown"
+    if (authStatus === "out" && !isPublic) {
       replace("/login");
     }
-  }, [isAuthorized, isPublic, replace]);
+  }, [authStatus, isPublic, replace]);
 
-  // страницы входа/регистрации — без сайдбара, на всю ширину
+  // публичные страницы (лендинг, вход, регистрация, privacy/terms) — без
+  // сайдбара, на всю ширину
   if (isPublic) return <>{children}</>;
 
   if (!isAuthorized) return null;
