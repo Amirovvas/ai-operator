@@ -15,8 +15,6 @@ const Profile = () => {
             <h1>My Profile</h1>
             <p>Manage your personal information and account settings.</p>
           </div>
-
-          <button className={css.editBtn}>Edit Profile</button>
         </div>
 
         <div className={css.profileInfo}>
@@ -47,7 +45,7 @@ const Profile = () => {
 
             <div className={css.detail}>
               <span>Last Name</span>
-              <p>Smith</p>
+              <p>{profile?.name}</p>
             </div>
 
             <div className={css.detail}>
@@ -55,10 +53,7 @@ const Profile = () => {
               <p>{profile?.email}</p>
             </div>
 
-            <div className={css.detail}>
-              <span>Phone</span>
-              <p>+996 555 123 456</p>
-            </div>
+           
           </div>
         </section>
 
@@ -79,17 +74,6 @@ const Profile = () => {
               {profile?.google_id && "Connected"}
             </span>
           </div>
-
-          <div className={css.accountItem}>
-            <div className={css.securityIcon}>•</div>
-
-            <div className={css.accountText}>
-              <strong>Password</strong>
-              <span>Your account password is protected</span>
-            </div>
-
-            <button className={css.changeBtn}>Change</button>
-          </div>
         </section>
 
         <div className={css.divider}></div>
@@ -101,7 +85,6 @@ const Profile = () => {
             <button onClick={() => logout()} className={css.logoutBtn}>
               Log Out
             </button>
-
           </div>
         </section>
       </div>
