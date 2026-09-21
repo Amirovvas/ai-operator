@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import css from "./aiChat.module.css";
 
@@ -43,7 +43,7 @@ const suggestions = [
   },
 ];
 
-const AiChat = () => {
+const AiChatContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -262,6 +262,14 @@ const AiChat = () => {
         </div>
       </form>
     </div>
+  );
+};
+
+const AiChat = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AiChatContent />
+    </Suspense>
   );
 };
 
