@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 interface IForm {
   name: string;
   email: string;
@@ -84,7 +85,7 @@ const Register = () => {
             </button>
           </form>
 
-          <a href="http://localhost:5000/auth/google">Google account</a>
+          <GoogleButton />
           <p className={css.loginText}>
             Already have an account? <Link href="/login">Login</Link>
           </p>

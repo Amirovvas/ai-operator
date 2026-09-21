@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { isPublicRoute } from "@/lib/routes";
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -59,6 +60,11 @@ api.interceptors.response.use(
       }
 
       localStorage.removeItem("accessToken");
+
+      // сессия закончилась и обновить её не удалось — возвращаем на вход
+      if (typeof window !== "undefined" && !isPublicRoute(window.location.pathname)) {
+        window.location.replace("/login");
+      }
     }
 
     return Promise.reject(error);

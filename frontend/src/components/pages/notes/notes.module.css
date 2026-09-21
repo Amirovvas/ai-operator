@@ -1,7 +1,7 @@
 .page {
   display: flex;
 
-  height: 100vh;
+  height: calc(100dvh - var(--topbar-h));
 
   background: #fff;
 }
@@ -249,4 +249,76 @@
   font-size: 14px;
   line-height: 1.8;
   font-family: inherit;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+.backButton {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .list {
+    width: 260px;
+  }
+
+  .titleInput {
+    margin: 20px 24px 0;
+  }
+
+  .contentInput {
+    margin: 12px 24px 24px;
+  }
+}
+
+/* телефон: одна панель на экран, у редактора появляется кнопка "назад" */
+@media (max-width: 767px) {
+  .list {
+    width: 100%;
+    border-right: 0;
+  }
+
+  .editor {
+    display: none;
+  }
+
+  .showEditor .list {
+    display: none;
+  }
+
+  .showEditor .editor {
+    display: flex;
+  }
+
+  .editorToolbar {
+    justify-content: flex-end;
+    padding: 0 12px;
+  }
+
+  .backButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-right: auto;
+    padding: 6px;
+
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #444;
+
+    cursor: pointer;
+  }
+
+  .titleInput {
+    margin: 16px 16px 0;
+    font-size: 21px;
+  }
+
+  .contentInput {
+    margin: 10px 16px 20px;
+  }
 }

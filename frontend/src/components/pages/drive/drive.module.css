@@ -1,6 +1,6 @@
 .container {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100dvh - var(--topbar-h));
   background: #ffffff;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
@@ -285,5 +285,61 @@
     margin: 0 -16px;
     padding-left: 16px;
     padding-right: 16px;
+  }
+}
+
+
+/* =========================
+   RESPONSIVE (tablet / phone)
+========================= */
+
+@media (max-width: 1023px) {
+  .container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .topBar {
+    margin: 0 -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* на телефоне меню открывает верхняя панель приложения — дубль не нужен */
+  .sidebarToggle,
+  .topBarRight {
+    display: none;
+  }
+
+  .topBar {
+    gap: 0;
+  }
+
+  .searchBar {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .colOwner {
+    display: none;
+  }
+
+  .tableHeaderRow,
+  .tableRow {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 0.7fr);
+    gap: 8px;
+  }
+
+  .fileName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .folderGrid {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getAvatarUrl } from "@/lib/avatar";
 
 interface IProps {
@@ -12,10 +12,10 @@ interface IProps {
 // (например, Google-ссылка отвалилась), показываем первую букву имени
 export const UserAvatar = ({ avatar, name, className }: IProps) => {
   const src = getAvatarUrl(avatar);
-  const [failed, setFailed] = useState(false);
-
-  // новая ссылка (после смены аккаунта/обновления профиля) — пробуем заново
-  useEffect(() => setFailed(false), [src]);
+  // помним, какая именно ссылка не загрузилась: новая ссылка (смена аккаунта,
+  // обновление профиля) автоматически пробуется заново
+  const [failedSrc, setFailedSrc] = useState("");
+  const failed = failedSrc === src;
 
   if (!src || failed) {
     return (
@@ -34,7 +34,7 @@ export const UserAvatar = ({ avatar, name, className }: IProps) => {
       src={src}
       alt={name || "Avatar"}
       referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(src)}
     />
   );
 };

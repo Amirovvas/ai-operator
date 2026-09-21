@@ -1,0 +1,72 @@
+.googleButton {
+  position: relative;
+
+  width: 100%;
+  min-height: 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 16px 0 48px;
+
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.googleButton:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.googleButton:focus-visible {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+/* иконка слева внутри кнопки, текст остаётся по центру */
+.googleIcon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+
+  display: flex;
+  transform: translateY(-50%);
+}
+
+.googleWrap {
+  margin-top: 6px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin: 14px 0 16px;
+
+  color: #9ca3af;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}

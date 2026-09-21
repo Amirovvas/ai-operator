@@ -128,3 +128,50 @@
     @apply font-sans;
   }
 }
+
+/* высота верхней панели на телефоне (см. .mobile-topbar): страницы,
+   занимающие весь экран, вычитают её из 100dvh */
+:root {
+  --topbar-h: 0px;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --topbar-h: 52px;
+  }
+}
+
+.mobile-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 0 12px;
+
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ничего не должно распирать страницу по горизонтали */
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* верхняя панель только для телефонов и планшетов (сайдбар там — шторка).
+   Правило вне @layer и после .mobile-topbar, поэтому Tailwind-класс lg:hidden
+   его не перебил бы, а порядок в файле важен */
+@media (min-width: 1024px) {
+  .mobile-topbar {
+    display: none;
+  }
+}

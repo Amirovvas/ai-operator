@@ -1,6 +1,6 @@
 .container {
   padding: 30px 0;
-  min-height: 100vh;
+  min-height: calc(100dvh - var(--topbar-h));
   background: #f8fafc;
   h5 {
     color: black !important;
@@ -267,4 +267,39 @@
 
 .replyForm .errorBox {
   margin: 0 0 4px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1023px) {
+  .container .mainContainer .top {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 16px 0;
+  }
+
+  .container .mainContainer {
+    gap: 16px;
+  }
+
+  .container .mainContainer .main .list .message {
+    margin-top: 8px;
+    padding: 10px 12px;
+  }
+
+  /* отступ 74px под чекбокс+звезду на телефоне съедает половину строки */
+  .container .mainContainer .main .list .message .subject,
+  .container .mainContainer .main .list .message .preview {
+    margin-left: 0;
+  }
+
+  .container .mainContainer .main .topMain {
+    padding: 14px 16px;
+  }
 }

@@ -110,21 +110,21 @@ const Contacts = () => {
   };
 
   return (
-    <main className="flex h-screen flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+    <main className="flex h-[calc(100dvh-var(--topbar-h))] flex-col bg-background">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
         <div>
           <h1 className="text-lg font-semibold text-foreground">Contacts</h1>
           <p className="text-xs text-muted-foreground">{list.length} total</p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search contacts..."
-              className="w-56 pl-8"
+              className="w-full pl-8 sm:w-56"
             />
           </div>
 
@@ -134,7 +134,7 @@ const Contacts = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto px-6 py-4">
+      <div className="flex-1 overflow-auto px-4 py-4 sm:px-6">
         {isLoading && (
           <p className="text-sm text-muted-foreground">Loading contacts...</p>
         )}
@@ -154,12 +154,12 @@ const Contacts = () => {
         )}
 
         {!isLoading && filtered.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Contact</th>
-                  <th className="px-4 py-2.5 font-medium">Company</th>
+                  <th className="px-3 py-2.5 font-medium sm:px-4">Contact</th>
+                  <th className="hidden px-4 py-2.5 font-medium sm:table-cell">Company</th>
                   <th className="px-4 py-2.5 font-medium">Contact info</th>
                   <th className="px-4 py-2.5 text-right font-medium">
                     Actions
@@ -175,13 +175,21 @@ const Contacts = () => {
                         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                           {initials(contact.name)}
                         </div>
-                        <span className="font-medium text-foreground">
-                          {contact.name}
-                        </span>
+                        <div className="flex min-w-0 flex-col">
+                          <span className="font-medium text-foreground">
+                            {contact.name}
+                          </span>
+                          {/* на телефоне колонка Company скрыта — компания под именем */}
+                          {contact.company && (
+                            <span className="text-xs text-muted-foreground sm:hidden">
+                              {contact.company}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                       {contact.company ? (
                         <span className="inline-flex items-center gap-1.5">
                           <Building2 className="size-3.5" /> {contact.company}
@@ -194,12 +202,12 @@ const Contacts = () => {
                     <td className="px-4 py-3 text-muted-foreground">
                       <div className="flex flex-col gap-0.5">
                         {contact.email && (
-                          <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="inline-flex items-center gap-1.5 break-all text-xs">
                             <Mail className="size-3.5" /> {contact.email}
                           </span>
                         )}
                         {contact.phone && (
-                          <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="inline-flex items-center gap-1.5 break-all text-xs">
                             <Phone className="size-3.5" /> {contact.phone}
                           </span>
                         )}
@@ -208,7 +216,7 @@ const Contacts = () => {
                     </td>
 
                     <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex justify-end gap-1 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
                         <Button
                           variant="ghost"
                           size="icon-sm"

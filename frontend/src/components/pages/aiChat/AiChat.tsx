@@ -12,6 +12,7 @@ import { IoMdSend } from "react-icons/io";
 import { useSendMessage } from "@/hooks/chat/useSendMessage";
 import type { IChatBlock } from "@/hooks/chat/useSendMessage";
 import ResultBlocks from "./ResultBlocks";
+import { LogoMark } from "@/components/layout/Logo";
 
 interface IMessage {
   id: number;
@@ -158,7 +159,9 @@ const AiChatContent = () => {
     <div className={css.container}>
       <header className={css.header}>
         <div className={css.headerLeft}>
-          <span className={css.logoIcon}>✦</span>
+          <span className={css.logoIcon}>
+            <LogoMark size={20} />
+          </span>
           <span className={css.logoText}>AI Operator</span>
           <span className={css.previewBadge}>PREVIEW</span>
         </div>
@@ -167,7 +170,9 @@ const AiChatContent = () => {
       <main className={css.main}>
         {messages.length === 0 ? (
           <>
-            <div className={css.heroIcon}>✦</div>
+            <div className={css.heroIcon}>
+              <LogoMark size={26} />
+            </div>
 
             <h1 className={css.heroTitle}>How can I help?</h1>
 

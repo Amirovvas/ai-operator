@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import scss from "./notes.module.css";
 import { useGetNotes } from "@/hooks/notes/useGetNotes";
 import { useCreateNote } from "@/hooks/notes/useCreateNote";
@@ -26,6 +26,8 @@ const Notes = () => {
   const { mutate: deleteNote } = useDeleteNote();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // на телефоне список и редактор не помещаются рядом — показываем по очереди
+  const [mobileEditor, setMobileEditor] = useState(false);
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -89,7 +91,10 @@ const Notes = () => {
     createNote(
       { title: "Untitled note", content: "" },
       {
-        onSuccess: (note) => setSelectedId(note.id),
+        onSuccess: (note) => {
+          setSelectedId(note.id);
+          setMobileEditor(true);
+        },
       },
     );
   };
@@ -97,7 +102,10 @@ const Notes = () => {
   const handleDelete = (id: number) => {
     deleteNote(id, {
       onSuccess: () => {
-        if (selectedId === id) setSelectedId(null);
+        if (selectedId === id) {
+          setSelectedId(null);
+          setMobileEditor(false);
+        }
       },
     });
   };
@@ -115,7 +123,9 @@ const Notes = () => {
   );
 
   return (
-    <main className={scss.page}>
+    <main
+      className={`${scss.page} ${mobileEditor ? scss.showEditor : ""}`}
+    >
       <section className={scss.list}>
         <div className={scss.listHeader}>
           <h1>Notes</h1>
@@ -151,7 +161,10 @@ const Notes = () => {
               className={`${scss.item} ${
                 note.id === selectedId ? scss.itemActive : ""
               }`}
-              onClick={() => setSelectedId(note.id)}
+              onClick={() => {
+                setSelectedId(note.id);
+                setMobileEditor(true);
+              }}
             >
               <div className={scss.itemTop}>
                 <strong>{note.title || "Untitled note"}</strong>
@@ -174,6 +187,14 @@ const Notes = () => {
         {selectedNote && (
           <>
             <div className={scss.editorToolbar}>
+              <button
+                className={scss.backButton}
+                onClick={() => setMobileEditor(false)}
+                aria-label="Back to notes"
+              >
+                <ArrowLeft size={18} />
+              </button>
+
               <span className={scss.saveState}>
                 {saveState === "saving" && "Saving..."}
                 {saveState === "saved" && "Saved"}

@@ -5,6 +5,7 @@ import css from "./login.module.css";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect } from "react";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 interface IForm {
   email: string;
@@ -61,6 +62,8 @@ const Login = () => {
               Login
             </button>
           </form>
+
+          <GoogleButton />
 
           <p className={css.loginText}>
             <Link href="/forgot-password">Forgot password?</Link>
