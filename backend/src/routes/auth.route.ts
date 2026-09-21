@@ -43,10 +43,14 @@ router.post(
 );
 router.post("/login", loginController);
 router.post("/refresh", refreshController);
-router.get("/profile", profileController);
+router.get("/profile", authMiddleware, profileController);
 router.post("/logout", logoutController);
 router.get("/gmail", authMiddleware, getGmailController); // gmail get
-router.get("/gmail/threads/:threadId", authMiddleware, getGmailThreadController);
+router.get(
+  "/gmail/threads/:threadId",
+  authMiddleware,
+  getGmailThreadController,
+);
 router.post(
   "/gmail/threads/:threadId/reply",
   authMiddleware,

@@ -121,9 +121,9 @@ export const profileController = async (
   next: NextFunction,
 ) => {
   try {
-    let token = req.cookies.refreshToken;
+    let userId = (req as any).user.id;
 
-    const result = await profileService(token);
+    const result = await profileService(userId);
     res.status(200).json({
       message: "Profile",
       data: result,
@@ -508,7 +508,6 @@ export const getDriveController = async (
 
     return res.status(200).json({ message: "Drive files", data: files });
   } catch (error: any) {
-   
     next(error);
   }
 };

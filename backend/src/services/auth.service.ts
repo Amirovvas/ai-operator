@@ -119,14 +119,14 @@ export const refreshService = async (refreshToken: string) => {
   return tokens;
 };
 
-export const profileService = async (refreshToken: string) => {
+export const profileService = async (userId: number) => {
   const result = await pool.query(
     `
      select id, name, email, avatar, google_id, created_at from users
-     where refresh_token = $1
+     where id = $1
 
         `,
-    [refreshToken],
+    [userId],
   );
   return result.rows[0];
 };
@@ -272,7 +272,9 @@ export const createCalendarEvent = async (
         description: event.description ?? null,
         start: { date: event.start },
         end: {
-          date: isDateOnly(event.end) ? event.end : addDaysToDate(event.start, 1),
+          date: isDateOnly(event.end)
+            ? event.end
+            : addDaysToDate(event.start, 1),
         },
       },
     });
@@ -330,7 +332,10 @@ const resolveCalendarEvent = async (
 ) => {
   if (eventId) {
     try {
-      const { data } = await calendar.events.get({ calendarId: "primary", eventId });
+      const { data } = await calendar.events.get({
+        calendarId: "primary",
+        eventId,
+      });
       if (data.status !== "cancelled") return data;
     } catch (error: any) {
       if (![400, 404, 410].includes(getHttpStatus(error))) throw error;
@@ -398,7 +403,8 @@ export const updateCalendarEvent = async (
   // update-сервисах у notes/tasks/contacts/deals
   const requestBody: Record<string, any> = {};
   if (event.summary !== undefined) requestBody.summary = event.summary;
-  if (event.description !== undefined) requestBody.description = event.description;
+  if (event.description !== undefined)
+    requestBody.description = event.description;
 
   if (event.start || event.end) {
     // текущее событие нужно, чтобы при смене только start (например, "перенеси
@@ -408,7 +414,8 @@ export const updateCalendarEvent = async (
 
     const parse = (value: string, label: string) => {
       const date = new Date(value);
-      if (Number.isNaN(date.getTime())) throw new Error(`Invalid ${label} date: ${value}`);
+      if (Number.isNaN(date.getTime()))
+        throw new Error(`Invalid ${label} date: ${value}`);
       return date;
     };
     const HOUR = 60 * 60 * 1000;
@@ -425,7 +432,8 @@ export const updateCalendarEvent = async (
       const oldEnd = current.end?.date || "";
       const days = Math.max(
         1,
-        Math.round((Date.parse(oldEnd) - Date.parse(oldStart)) / (24 * HOUR)) || 1,
+        Math.round((Date.parse(oldEnd) - Date.parse(oldStart)) / (24 * HOUR)) ||
+          1,
       );
 
       const start = event.start ? toDate(event.start, "start") : oldStart;
@@ -440,13 +448,18 @@ export const updateCalendarEvent = async (
       requestBody.end = { date: end };
     } else {
       const oldStart = parse(current.start!.dateTime!, "start");
-      const oldEnd = parse(current.end?.dateTime || current.start!.dateTime!, "end");
+      const oldEnd = parse(
+        current.end?.dateTime || current.start!.dateTime!,
+        "end",
+      );
       const duration = oldEnd.getTime() - oldStart.getTime() || HOUR;
 
       const start = event.start ? parse(event.start, "start") : oldStart;
       // передали только start — двигаем end так, чтобы длительность не менялась;
       // передали только end — start остаётся прежним
-      const end = event.end ? parse(event.end, "end") : new Date(start.getTime() + duration);
+      const end = event.end
+        ? parse(event.end, "end")
+        : new Date(start.getTime() + duration);
 
       if (end.getTime() <= start.getTime()) {
         throw new Error("End time must be after start time");
