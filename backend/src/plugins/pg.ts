@@ -6,6 +6,9 @@ export const pool = new Pool({
   port: Number(process.env.DB_PORT),
   user: process.env.DB_USER!,
   password: process.env.DB_PASSWORD!,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 pool.connect().then(async () => {
