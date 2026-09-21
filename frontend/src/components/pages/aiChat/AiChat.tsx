@@ -157,16 +157,6 @@ const AiChatContent = () => {
 
   return (
     <div className={css.container}>
-      <header className={css.header}>
-        <div className={css.headerLeft}>
-          <span className={css.logoIcon}>
-            <LogoMark size={20} />
-          </span>
-          <span className={css.logoText}>AI Operator</span>
-          <span className={css.previewBadge}>PREVIEW</span>
-        </div>
-      </header>
-
       <main className={css.main}>
         {messages.length === 0 ? (
           <>

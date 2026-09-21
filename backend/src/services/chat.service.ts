@@ -32,7 +32,11 @@ import {
   getDealsService,
   updateDealService,
 } from "./deal.service";
-import { getGmailMessages } from "./gmail.service";
+import {
+  getGmailMessages,
+  getGmailThread,
+  replyToGmailThread,
+} from "./gmail.service";
 
 interface IChatMessage {
   role: "user" | "assistant";
@@ -154,10 +158,16 @@ const filterTasksByDue = (tasks: any[], due?: string) => {
 const getHeader = (message: any, name: string) =>
   message?.payload?.headers?.find((h: any) => h.name === name)?.value || "";
 
+// "Иван <ivan@mail.com>" -> "ivan@mail.com"
+const emailOf = (value: string) =>
+  (value.match(/<([^>]+)>/)?.[1] || value).trim().toLowerCase();
+
 const normalizeGmail = (messages: any[]) =>
   messages.map((m) => ({
     id: m.id,
+    threadId: m.threadId,
     from: getHeader(m, "From"),
+    fromEmail: emailOf(getHeader(m, "From")),
     subject: getHeader(m, "Subject"),
     snippet: m.snippet || "",
     date: m.internalDate
@@ -185,6 +195,108 @@ const normalizeDrive = (files: any[]) =>
   }));
 
 // =========================================================
+// validation + resolving: параметры от модели ненадёжны (id строкой, id
+// неизвестен после "да" в следующем сообщении, "tomorrow" вместо даты, stage
+// вне списка). Проверяем и нормализуем здесь, а не отдаём БД сырой текст.
+// Ошибки — обычные Error: runTool вернёт их модели как { error }.
+// =========================================================
+
+const TASK_STATUSES = ["todo", "in_progress", "done"];
+const DEAL_STAGES = ["new", "in_progress", "won", "lost"];
+
+const toId = (value: any): number | null => {
+  const n = typeof value === "string" ? Number(value.trim()) : value;
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+const assertOneOf = (value: any, allowed: string[], label: string) => {
+  if (value === undefined || value === null) return;
+  if (!allowed.includes(value)) {
+    throw new Error(
+      `Invalid ${label} "${value}": allowed values are ${allowed.join(", ")}`,
+    );
+  }
+};
+
+// undefined — не менять, null/"" — очистить, иначе только YYYY-MM-DD
+const normalizeDueDate = (value: any) => {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return null;
+  const day = String(value).trim().match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (!day || Number.isNaN(Date.parse(day))) {
+    throw new Error(
+      `Invalid due_date "${value}": use an absolute date in YYYY-MM-DD format`,
+    );
+  }
+  return day;
+};
+
+const normalizeAmount = (value: any) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`Invalid amount "${value}": must be a non-negative number`);
+  }
+  return n;
+};
+
+// exactOptionalPropertyTypes: сервисам нельзя передавать ключи со значением
+// undefined — выбрасываем их ("не менять" остаётся отсутствием ключа)
+const definedOnly = (obj: Record<string, any>): any =>
+  Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+
+const norm = (value: any) => String(value ?? "").trim().toLowerCase();
+
+// Находит запись по id, а если id нет/не подошёл — по названию (match_title).
+// После "удали задачу X" модель не всегда знает id: раньше это заканчивалось
+// ошибкой или удалением не того. Неоднозначность не угадываем — возвращаем
+// кандидатов, чтобы модель спросила пользователя.
+const resolveEntity = async (
+  label: "note" | "task" | "contact" | "deal",
+  input: any,
+  loadAll: () => Promise<any[]>,
+  nameOf: (item: any) => string,
+  query?: string,
+) => {
+  const all = await loadAll();
+  const id = toId(input.id);
+
+  if (id) {
+    const byId = all.find((item) => item.id === id);
+    if (byId) return byId;
+  }
+
+  const q = norm(query);
+  if (!q) {
+    throw new Error(
+      id
+        ? `No ${label} with id ${id} exists. Call get_${label}s to find the right one, or pass match_title.`
+        : `Missing ${label} id. Pass id (from get_${label}s) or match_title with the exact title/name.`,
+    );
+  }
+
+  const exact = all.filter((item) => norm(nameOf(item)) === q);
+  const found = exact.length
+    ? exact
+    : all.filter((item) => norm(nameOf(item)).includes(q));
+
+  if (found.length === 0) {
+    throw new Error(`No ${label} matching "${query}" was found.`);
+  }
+  if (found.length > 1) {
+    const list = found
+      .slice(0, 5)
+      .map((item) => `#${item.id} "${nameOf(item)}"`)
+      .join("; ");
+    throw new Error(
+      `Several ${label}s match "${query}": ${list}. Ask the user which one they mean (or pass the id).`,
+    );
+  }
+  return found[0];
+};
+
+// =========================================================
 // tool declarations — Gemini's functionDeclarations
 // =========================================================
 
@@ -192,7 +304,7 @@ const functionDeclarations: any[] = [
   {
     name: "get_gmail_messages",
     description:
-      "Get the user's recent Gmail messages. Use limit for 'last N emails' (default 5 if user just says 'the last email'), search to filter by sender/subject/keyword, order 'oldest' for 'the first email'.",
+      "Get the user's recent Gmail messages (each has id, threadId, from, fromEmail, subject, snippet, date). Use limit for 'last N emails' (default 5 if user just says 'the last email'), search to filter by sender/subject/keyword, order 'oldest' for 'the first email'.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
@@ -201,6 +313,33 @@ const functionDeclarations: any[] = [
         order: { type: "STRING" as const, enum: ["latest", "oldest"] },
       },
       required: [] as string[],
+    },
+  },
+  {
+    name: "read_email",
+    description:
+      "Read the full text of an email conversation (all messages of the thread). Use it before replying when the user did not dictate the reply text, or when asked what an email says. Pass thread_id (from get_gmail_messages) or search (sender name/email or subject) to find the latest matching conversation.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        thread_id: { type: "STRING" as const },
+        search: { type: "STRING" as const },
+      },
+      required: [] as string[],
+    },
+  },
+  {
+    name: "reply_to_email",
+    description:
+      "REALLY send a reply to an email conversation from the user's Gmail (the reply goes to the sender of the latest message and stays in the same thread). body is the exact plain text to send. Pass thread_id (from get_gmail_messages) or search (sender name/email or subject) to pick the conversation. Call it immediately when the user asks to reply/answer/send text to a person — no confirmation is needed.",
+    parameters: {
+      type: "OBJECT" as const,
+      properties: {
+        thread_id: { type: "STRING" as const },
+        search: { type: "STRING" as const },
+        body: { type: "STRING" as const },
+      },
+      required: ["body"] as string[],
     },
   },
   {
@@ -304,25 +443,30 @@ const functionDeclarations: any[] = [
   },
   {
     name: "update_note",
-    description: "Update an existing note's title and/or content.",
+    description:
+      "Update an existing note's title and/or content. Pass id from get_notes; if the id is unknown pass match_title (the CURRENT note title). New values go in title/content.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
         id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
         title: { type: "STRING" as const },
         content: { type: "STRING" as const },
       },
-      required: ["id"] as string[],
+      required: [] as string[],
     },
   },
   {
     name: "delete_note",
     description:
-      "Delete a note. Only call this after the user has explicitly confirmed the deletion in the conversation.",
+      "Delete a note. Call it immediately when the user asks to delete/remove it — no confirmation is needed. Pass id from get_notes; if the id is unknown pass match_title (the note title) and the server finds it.",
     parameters: {
       type: "OBJECT" as const,
-      properties: { id: { type: "NUMBER" as const } },
-      required: ["id"] as string[],
+      properties: {
+        id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
+      },
+      required: [] as string[],
     },
   },
   {
@@ -368,11 +512,12 @@ const functionDeclarations: any[] = [
   {
     name: "update_task",
     description:
-      "Update an existing task: title, description, status, and/or due_date (ISO YYYY-MM-DD).",
+      "Update an existing task: title, description, status, and/or due_date (ISO YYYY-MM-DD). Pass id from get_tasks; if the id is unknown pass match_title (the CURRENT task title). New values go in title/description/status/due_date.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
         id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
         title: { type: "STRING" as const },
         description: { type: "STRING" as const },
         status: {
@@ -381,17 +526,20 @@ const functionDeclarations: any[] = [
         },
         due_date: { type: "STRING" as const },
       },
-      required: ["id"] as string[],
+      required: [] as string[],
     },
   },
   {
     name: "delete_task",
     description:
-      "Delete a task. Only call this after the user has explicitly confirmed the deletion in the conversation.",
+      "Delete a task. Call it immediately when the user asks to delete/remove it — no confirmation is needed. Pass id from get_tasks; if the id is unknown pass match_title (the task title) and the server finds it.",
     parameters: {
       type: "OBJECT" as const,
-      properties: { id: { type: "NUMBER" as const } },
-      required: ["id"] as string[],
+      properties: {
+        id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
+      },
+      required: [] as string[],
     },
   },
   {
@@ -425,28 +573,33 @@ const functionDeclarations: any[] = [
   },
   {
     name: "update_contact",
-    description: "Update an existing CRM contact's fields.",
+    description:
+      "Update an existing CRM contact's fields. Pass id from get_contacts; if the id is unknown pass match_title (the CURRENT contact name). New values go in name/email/phone/company/notes.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
         id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
         name: { type: "STRING" as const },
         email: { type: "STRING" as const },
         phone: { type: "STRING" as const },
         company: { type: "STRING" as const },
         notes: { type: "STRING" as const },
       },
-      required: ["id"] as string[],
+      required: [] as string[],
     },
   },
   {
     name: "delete_contact",
     description:
-      "Delete a CRM contact. Only call this after the user has explicitly confirmed the deletion in the conversation.",
+      "Delete a CRM contact. Call it immediately when the user asks to delete/remove it — no confirmation is needed. Pass id from get_contacts; if the id is unknown pass match_title (the contact name) and the server finds it.",
     parameters: {
       type: "OBJECT" as const,
-      properties: { id: { type: "NUMBER" as const } },
-      required: ["id"] as string[],
+      properties: {
+        id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
+      },
+      required: [] as string[],
     },
   },
   {
@@ -470,12 +623,13 @@ const functionDeclarations: any[] = [
   {
     name: "create_deal",
     description:
-      "Create a new deal linked to an existing contact. If you don't know the contact's id, call get_contacts first.",
+      "Create a new deal linked to an existing contact. Pass contact_id (from get_contacts) or, if the id is unknown, contact_name and the server finds the contact.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
         title: { type: "STRING" as const },
         contact_id: { type: "NUMBER" as const },
+        contact_name: { type: "STRING" as const },
         amount: { type: "NUMBER" as const },
         stage: {
           type: "STRING" as const,
@@ -483,19 +637,21 @@ const functionDeclarations: any[] = [
         },
         notes: { type: "STRING" as const },
       },
-      required: ["title", "contact_id"] as string[],
+      required: ["title"] as string[],
     },
   },
   {
     name: "update_deal",
     description:
-      "Update an existing deal's fields, including moving it to another stage.",
+      "Update an existing deal's fields, including moving it to another stage. Pass id from get_deals; if the id is unknown pass match_title (the CURRENT deal title). New values go in the other fields.",
     parameters: {
       type: "OBJECT" as const,
       properties: {
         id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
         title: { type: "STRING" as const },
         contact_id: { type: "NUMBER" as const },
+        contact_name: { type: "STRING" as const },
         amount: { type: "NUMBER" as const },
         stage: {
           type: "STRING" as const,
@@ -503,17 +659,20 @@ const functionDeclarations: any[] = [
         },
         notes: { type: "STRING" as const },
       },
-      required: ["id"] as string[],
+      required: [] as string[],
     },
   },
   {
     name: "delete_deal",
     description:
-      "Delete a deal. Only call this after the user has explicitly confirmed the deletion in the conversation.",
+      "Delete a deal. Call it immediately when the user asks to delete/remove it — no confirmation is needed. Pass id from get_deals; if the id is unknown pass match_title (the deal title) and the server finds it.",
     parameters: {
       type: "OBJECT" as const,
-      properties: { id: { type: "NUMBER" as const } },
-      required: ["id"] as string[],
+      properties: {
+        id: { type: "NUMBER" as const },
+        match_title: { type: "STRING" as const },
+      },
+      required: [] as string[],
     },
   },
 ];
@@ -533,7 +692,9 @@ const LIST_BLOCK_TYPE: Record<string, IChatBlock["type"]> = {
 // без таймаута такой вызов держит HTTP-соединение открытым бесконечно, и
 // пользователь вечно видит "Thinking...". Превращаем зависание в понятную
 // 503-ошибку, которую уже умеет обрабатывать catch ниже.
-const GEMINI_TIMEOUT_MS = 25000;
+// Gemini на бесплатном тарифе отвечает 15-25 секунд даже на простой запрос, а
+// ход с инструментами — это 2-3 запроса подряд, поэтому запас нужен побольше
+const GEMINI_TIMEOUT_MS = 45000;
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   return Promise.race([
@@ -552,13 +713,16 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
 // вызывающему коду сырой объект с вложенными response/data/error
 const getGoogleErrorMessage = (error: any) => {
   const message = error?.response?.data?.error?.message || error?.message || "";
-  // токен, выданный до расширения scope до calendar, умеет только читать —
-  // запись (create/update/delete) вернёт 403 insufficient scopes
+  // токен, выданный до расширения scope, умеет только читать —
+  // запись (Gmail/Calendar) вернёт 403 insufficient scopes
   if (
     error?.response?.status === 403 &&
     /insufficient|scope/i.test(message)
   ) {
-    return "Google Calendar write access is missing. The user must reconnect their Google account (open http://localhost:5000/auth/google and grant calendar access) and try again.";
+    const reconnect = process.env.GOOGLE_CALLBACK_URL
+      ? `${new URL(process.env.GOOGLE_CALLBACK_URL).origin}/auth/google`
+      : "the Sign in with Google page";
+    return `Google write access (Gmail/Calendar) is missing. The user must reconnect their Google account (open ${reconnect} and grant all requested permissions) and try again.`;
   }
   return (
     error?.response?.data?.error?.message ||
@@ -596,7 +760,7 @@ const createGoogleTokensGetter = (userId: number): GoogleTokensGetter => {
   };
 };
 
-const runTool = async (
+export const runTool = async (
   userId: number,
   name: string,
   input: any,
@@ -610,6 +774,51 @@ const runTool = async (
     // модель сама сформулирует это пользователю обычным текстом
     return { error: getGoogleErrorMessage(error) };
   }
+};
+
+// Определяем переписку для read_email/reply_to_email: по thread_id, а если его
+// нет ("ответь этому человеку" в следующем сообщении) — по поиску среди
+// последних писем. Разные отправители под один запрос не угадываем.
+const findGmailThreadId = async (
+  user: { google_access?: string; google_refresh?: string },
+  input: any,
+) => {
+  if (input.thread_id) return String(input.thread_id).trim();
+
+  const query = String(input.search ?? "").trim();
+  if (!query) {
+    throw new Error(
+      "Missing email reference: pass thread_id (from get_gmail_messages) or search (sender name/email or subject). If the user did not say whom to reply to, ask them.",
+    );
+  }
+
+  const messages = normalizeGmail(
+    await getGmailMessages(user.google_access, user.google_refresh),
+  );
+  const matches = messages.filter((m) =>
+    matchesSearch(`${m.from} ${m.subject} ${m.snippet}`, query),
+  );
+
+  if (matches.length === 0) {
+    throw new Error(`No email matching "${query}" was found among the recent messages.`);
+  }
+
+  const senders = [...new Set(matches.map((m) => m.fromEmail))];
+  if (senders.length > 1) {
+    const list = senders
+      .slice(0, 5)
+      .map((email) => {
+        const m = matches.find((x) => x.fromEmail === email)!;
+        return `${m.from} — "${m.subject}" (thread_id ${m.threadId})`;
+      })
+      .join("; ");
+    throw new Error(
+      `Several senders match "${query}": ${list}. Ask the user whom they mean, or pass thread_id.`,
+    );
+  }
+
+  // письма приходят от новых к старым — берём самое свежее
+  return matches[0]!.threadId as string;
 };
 
 const runToolUnsafe = async (
@@ -637,13 +846,62 @@ const runToolUnsafe = async (
       });
     }
 
+    case "read_email": {
+      const user = await getGoogleTokens();
+      if (!user?.google_access)
+        return { error: "Google account is not connected" };
+      const threadId = await findGmailThreadId(user, input);
+      const thread = await getGmailThread(
+        user.google_access,
+        user.google_refresh as string,
+        threadId,
+      );
+      // модели достаточно последних писем переписки и обрезанных текстов
+      return {
+        thread_id: thread.id,
+        subject: thread.subject,
+        messages: thread.messages.slice(-4).map((m) => ({
+          from: m.from,
+          to: m.to,
+          date: m.date,
+          is_mine: m.isMine,
+          body: m.body.slice(0, 3000),
+        })),
+      };
+    }
+
+    case "reply_to_email": {
+      const user = await getGoogleTokens();
+      if (!user?.google_access)
+        return { error: "Google account is not connected" };
+      const body = typeof input.body === "string" ? input.body.trim() : "";
+      if (!body)
+        return {
+          error: "Reply text is empty: pass the exact text to send in body",
+        };
+      if (body.length > 20000)
+        return { error: "Reply text is too long (max 20000 characters)" };
+      const threadId = await findGmailThreadId(user, input);
+      const sent = await replyToGmailThread(
+        user.google_access,
+        user.google_refresh as string,
+        threadId,
+        body,
+      );
+      // body возвращаем как есть, чтобы модель показала пользователю именно
+      // тот текст, который реально ушёл (в том числе улучшенный)
+      return { sent: true, to: sent.to, thread_id: sent.threadId, body };
+    }
+
     case "get_calendar_events": {
       const user = await getGoogleTokens();
       if (!user?.google_access)
         return { error: "Google account is not connected" };
       const events = normalizeCalendar(
         filterCalendarByRange(
-          await getCalendarEvents(user.google_access, user.google_refresh),
+          await getCalendarEvents(user.google_access, user.google_refresh, {
+            upcoming: input.range === "upcoming",
+          }),
           input.range,
         ),
       );
@@ -719,13 +977,38 @@ const runToolUnsafe = async (
     }
 
     case "create_note":
-      return await createNoteService(userId, input);
+      if (!String(input.title ?? "").trim() && !String(input.content ?? "").trim())
+        return { error: "A note needs a title or content" };
+      return await createNoteService(userId, {
+        title: input.title,
+        content: input.content,
+      });
 
-    case "update_note":
-      return await updateNoteService(userId, input.id, input);
+    case "update_note": {
+      const note = await resolveEntity(
+        "note",
+        input,
+        () => getNotesService(userId),
+        (n) => n.title,
+        input.match_title,
+      );
+      return await updateNoteService(userId, note.id, {
+        title: input.title,
+        content: input.content,
+      });
+    }
 
-    case "delete_note":
-      return await deleteNoteService(userId, input.id);
+    case "delete_note": {
+      const note = await resolveEntity(
+        "note",
+        input,
+        () => getNotesService(userId),
+        (n) => n.title,
+        input.match_title,
+      );
+      await deleteNoteService(userId, note.id);
+      return { deleted: true, id: note.id, title: note.title };
+    }
 
     case "get_tasks": {
       const tasks = await getTasksService(userId);
@@ -743,14 +1026,46 @@ const runToolUnsafe = async (
       });
     }
 
-    case "create_task":
-      return await createTaskService(userId, input);
+    case "create_task": {
+      if (!String(input.title ?? "").trim())
+        return { error: "Task title is required" };
+      assertOneOf(input.status, TASK_STATUSES, "status");
+      return await createTaskService(userId, definedOnly({
+        title: input.title,
+        description: input.description,
+        status: input.status,
+        due_date: normalizeDueDate(input.due_date),
+      }));
+    }
 
-    case "update_task":
-      return await updateTaskService(userId, input.id, input);
+    case "update_task": {
+      assertOneOf(input.status, TASK_STATUSES, "status");
+      const task = await resolveEntity(
+        "task",
+        input,
+        () => getTasksService(userId),
+        (t) => t.title,
+        input.match_title,
+      );
+      return await updateTaskService(userId, task.id, definedOnly({
+        title: input.title,
+        description: input.description,
+        status: input.status,
+        due_date: normalizeDueDate(input.due_date),
+      }));
+    }
 
-    case "delete_task":
-      return await deleteTaskService(userId, input.id);
+    case "delete_task": {
+      const task = await resolveEntity(
+        "task",
+        input,
+        () => getTasksService(userId),
+        (t) => t.title,
+        input.match_title,
+      );
+      await deleteTaskService(userId, task.id);
+      return { deleted: true, id: task.id, title: task.title };
+    }
 
     case "get_contacts": {
       const contacts = await getContactsService(userId);
@@ -766,13 +1081,42 @@ const runToolUnsafe = async (
     }
 
     case "create_contact":
-      return await createContactService(userId, input);
+      return await createContactService(userId, {
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        company: input.company,
+        notes: input.notes,
+      });
 
-    case "update_contact":
-      return await updateContactService(userId, input.id, input);
+    case "update_contact": {
+      const contact = await resolveEntity(
+        "contact",
+        input,
+        () => getContactsService(userId),
+        (c) => c.name,
+        input.match_title,
+      );
+      return await updateContactService(userId, contact.id, {
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        company: input.company,
+        notes: input.notes,
+      });
+    }
 
-    case "delete_contact":
-      return await deleteContactService(userId, input.id);
+    case "delete_contact": {
+      const contact = await resolveEntity(
+        "contact",
+        input,
+        () => getContactsService(userId),
+        (c) => c.name,
+        input.match_title,
+      );
+      await deleteContactService(userId, contact.id);
+      return { deleted: true, id: contact.id, title: contact.name };
+    }
 
     case "get_deals": {
       const deals = await getDealsService(userId);
@@ -789,19 +1133,104 @@ const runToolUnsafe = async (
       });
     }
 
-    case "create_deal":
-      return await createDealService(userId, input);
+    case "create_deal": {
+      if (!String(input.title ?? "").trim())
+        return { error: "Deal title is required" };
+      assertOneOf(input.stage, DEAL_STAGES, "stage");
+      // сделка привязана к контакту: id не знаем — ищем по имени
+      const contact =
+        toId(input.contact_id) || !String(input.contact_name ?? "").trim()
+          ? null
+          : await resolveEntity(
+              "contact",
+              {},
+              () => getContactsService(userId),
+              (c) => c.name,
+              input.contact_name,
+            );
+      return await createDealService(userId, definedOnly({
+        title: input.title,
+        contact_id: contact ? contact.id : toId(input.contact_id),
+        amount: normalizeAmount(input.amount),
+        stage: input.stage,
+        notes: input.notes,
+      }));
+    }
 
-    case "update_deal":
-      return await updateDealService(userId, input.id, input);
+    case "update_deal": {
+      assertOneOf(input.stage, DEAL_STAGES, "stage");
+      const deal = await resolveEntity(
+        "deal",
+        input,
+        () => getDealsService(userId),
+        (d) => d.title,
+        input.match_title,
+      );
+      const contact = String(input.contact_name ?? "").trim()
+        ? await resolveEntity(
+            "contact",
+            {},
+            () => getContactsService(userId),
+            (c) => c.name,
+            input.contact_name,
+          )
+        : null;
+      return await updateDealService(userId, deal.id, definedOnly({
+        title: input.title,
+        contact_id: contact ? contact.id : toId(input.contact_id),
+        amount: normalizeAmount(input.amount),
+        stage: input.stage,
+        notes: input.notes,
+      }));
+    }
 
-    case "delete_deal":
-      return await deleteDealService(userId, input.id);
+    case "delete_deal": {
+      const deal = await resolveEntity(
+        "deal",
+        input,
+        () => getDealsService(userId),
+        (d) => d.title,
+        input.match_title,
+      );
+      await deleteDealService(userId, deal.id);
+      return { deleted: true, id: deal.id, title: deal.title };
+    }
 
     default:
       return { error: `Unknown tool: ${name}` };
   }
 };
+
+const isWriteTool = (name: string) =>
+  /^(create|update|delete|reply)_/.test(name);
+
+// Модель заявляет о выполненном действии от первого лица ("I deleted...",
+// "Готово, задача удалена", "Письмо отправлено"). Формулировки намеренно узкие,
+// чтобы не срабатывать на пересказ данных ("you created a note yesterday").
+const CLAIM_PATTERNS = [
+  /\bI(?:'ve| have)?\s+(?:just\s+)?(?:deleted|removed|created|added|updated|renamed|moved|rescheduled|sent|replied|marked|changed)\b/i,
+  /\b(?:has|have) been (?:deleted|removed|created|added|updated|renamed|moved|sent|marked)\b/i,
+  /\b(?:successfully|done[.!:,]?)\s+(?:deleted|removed|created|added|updated|sent)\b/i,
+  /(?:^|[\s.!])(?:я\s+)?(?:удалил[аи]?|создал[аи]?|добавил[аи]?|обновил[аи]?|изменил[аи]?|переименовал[аи]?|перенёс|перенес|отправил[аи]?|ответил[аи]?)(?=[\s.,!:]|$)/i,
+  /(?:удал[её]н[аоы]?|создан[аоы]?|добавлен[аоы]?|обновл[её]н[аоы]?|отправлен[аоы]?)(?=[\s.,!:]|$)/i,
+];
+
+const claimsActionDone = (text: string) =>
+  CLAIM_PATTERNS.some((pattern) => pattern.test(text));
+
+// запасной текст, если модель после write-инструмента вернула пустой ответ
+const summarizeWrites = (writes: { name: string; result: any }[]) =>
+  writes
+    .map(({ name, result }) => {
+      const what = name.replace(/_/g, " ");
+      if (result && typeof result === "object" && "error" in result) {
+        return `Could not ${what}: ${result.error}`;
+      }
+      const label =
+        result?.title ?? result?.name ?? result?.summary ?? result?.to;
+      return label ? `Done: ${what} — ${label}` : `Done: ${what}`;
+    })
+    .join("\n");
 
 export const sendChatMessage = async (
   userId: number,
@@ -829,7 +1258,8 @@ About yourself:
   Notes, Tasks, and a CRM (contacts and deals/sales pipeline).
 - You can read, create, update and delete notes, tasks, CRM contacts, CRM deals and
   Google Calendar events.
-- You can read Gmail messages and Drive files (read-only).
+- You can read Gmail messages, read whole email conversations, and REALLY send replies
+  to emails from the user's Gmail. Drive files are read-only.
 - You can also answer general questions and have normal conversations.
 
 If the user asks "Who are you?", "Who created you?", "What can you do?" or similar,
@@ -874,16 +1304,44 @@ Examples:
   without calling the tool. If the tool result says several events match, ask the user
   which one they mean; if it says the event was not found, tell the user.
 
-Confirmations:
-- Before calling delete_note, delete_task, delete_contact or delete_deal, always first
-  ask the user to confirm in plain text and DO NOT call the function yet. Only call it
-  after the user clearly confirms (e.g. "yes", "delete it", "confirm") in a following
-  message. This rule does NOT apply to delete_calendar_event.
+Deleting (notes, tasks, contacts, deals, calendar events):
+- When the user explicitly asks to delete/remove something, DO IT IMMEDIATELY: call the
+  delete_* tool in the same turn. Do NOT ask for confirmation.
+- If you know the id (from get_* in this turn), pass id. If you do not, pass
+  match_title (the title/name the user said) — the server finds the item itself.
+  Never invent an id and never put a title into id.
+- If the tool answers that several items match, list them briefly and ask which one.
+  If it answers that nothing matches, tell the user honestly.
+- "Delete all ..." means delete each matching item: call get_* first, then delete_*
+  for every item by id.
+- Only ask a clarifying question when the request is genuinely ambiguous.
+
+Sending email replies (reply_to_email / read_email):
+- "Reply to this person", "Ответь этому человеку", "answer him" — work out WHICH email
+  from the conversation (the sender/subject you mentioned earlier, or the email the user
+  just named). Pass thread_id if you have it from get_gmail_messages in this turn,
+  otherwise pass search (sender name/email or subject). Never guess between different
+  people: if the reference is unclear, ask whom to reply to.
+- If the user gave NO text ("Reply to him"), first call read_email to read the
+  conversation, then write a short, polite, relevant reply in the language of the email
+  and send it with reply_to_email. Tell the user what you sent.
+- If the user DICTATED the text ("Send this text to him: ..."), send EXACTLY that text
+  in body — do not rewrite, shorten, translate or add anything.
+- If the user asks to IMPROVE / polish / rewrite the text before sending, improve it
+  (fix grammar, make it clearer and more professional; keep the meaning, facts, the
+  language and the author's intent; do not invent new facts), then send the improved
+  text. If the user asks to only SHOW/draft the improved text first, show it and do NOT
+  send until they say to send.
+- After reply_to_email succeeds, confirm briefly WHO it was sent to and quote the exact
+  text that was sent (use the "body" from the tool result).
+- Replies to no-reply addresses are impossible — tell the user.
 
 Never lie about actions:
-- NEVER tell the user something was created, updated, or deleted unless you actually
-  called the matching create_*/update_*/delete_* tool in this turn and it succeeded.
-  If you are not calling a tool this turn, do not claim the data changed.
+- NEVER tell the user something was created, updated, deleted or SENT unless you
+  actually called the matching create_*/update_*/delete_*/reply_to_email tool in this
+  turn and its result did not contain an "error". A get_* call is not an action.
+- If you are not calling a tool this turn, do not claim the data changed.
+- If a tool returned an error, say what failed, in plain words, and what to do next.
 
 Summaries and daily briefing:
 - When asked to summarize something, use the tool results to write a short summary.
@@ -918,21 +1376,81 @@ Reply style:
   // пользователя и мгновенно сжигать дневную квоту
   const MAX_TOOL_ITERATIONS = 6;
 
+  // что реально сделано в этом ходе (а не то, что модель "рассказала")
+  let wroteAnything = false; // вызывался ли create_/update_/delete_/reply_ инструмент
+  let succeededWrites = 0; // ...и он завершился без error
+  const lastWrite: { name: string; result: any }[] = [];
+  let claimRetried = false;
+
   try {
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const response = await withTimeout(
-        ai.models.generateContent({
-          model: "gemini-3.6-flash", // бесплатный тариф: 1500 запросов/день
-          contents,
-          config: { systemInstruction, tools: [{ functionDeclarations }] },
-        }),
-        GEMINI_TIMEOUT_MS,
-      );
+      // один повтор при 503/таймауте: перегрузка Gemini обычно кратковременная,
+      // а без повтора пользователь получал ошибку посреди уже начатого действия.
+      // 429 (квота) не повторяем — это только съест остаток лимита.
+      let response;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          response = await withTimeout(
+            ai.models.generateContent({
+              model: "gemini-3.6-flash", // бесплатный тариф: 1500 запросов/день
+              contents,
+              config: { systemInstruction, tools: [{ functionDeclarations }] },
+            }),
+            GEMINI_TIMEOUT_MS,
+          );
+          break;
+        } catch (modelError: any) {
+          if (modelError?.status === 503 && attempt === 0) continue;
+          throw modelError;
+        }
+      }
 
       const functionCalls = response.functionCalls;
 
       if (!functionCalls || functionCalls.length === 0) {
-        return { reply: response.text || "", blocks };
+        const text = response.text || "";
+
+        // Модель написала "удалил/создал/отправил", но ни один write-инструмент
+        // не отработал успешно — это ложь о действии. Один раз возвращаем её
+        // назад с требованием реально вызвать инструмент.
+        if (
+          !claimRetried &&
+          succeededWrites === 0 &&
+          claimsActionDone(text) &&
+          iteration < MAX_TOOL_ITERATIONS - 1
+        ) {
+          claimRetried = true;
+          contents.push({
+            role: "model",
+            parts: [{ text: text || "(no text)" }],
+          });
+          contents.push({
+            role: "user",
+            parts: [
+              {
+                text: "SYSTEM CHECK: you said the action was done, but no create/update/delete/reply tool completed successfully in this turn, so nothing actually changed. Call the correct tool now. If it truly cannot be done, tell the user honestly that it was NOT done and why.",
+              },
+            ],
+          });
+          continue;
+        }
+
+        // write-инструмент вызывался — пользователю нужен текст-результат, а не
+        // список из get_*, вызванного ради поиска id (на фронте текст скрыт,
+        // когда есть блоки, и удаление выглядело как "ничего не произошло")
+        const finalBlocks = wroteAnything ? [] : blocks;
+
+        if (text) return { reply: text, blocks: finalBlocks };
+
+        if (wroteAnything) {
+          return { reply: summarizeWrites(lastWrite), blocks: [] };
+        }
+        return {
+          reply: finalBlocks.length
+            ? ""
+            : "I couldn't produce an answer. Please try rephrasing your request.",
+          blocks: finalBlocks,
+        };
       }
 
       const modelParts = response.candidates?.[0]?.content?.parts ?? [];
@@ -943,13 +1461,20 @@ Reply style:
         const result = await runTool(
           userId,
           call.name!,
-          call.args,
+          call.args ?? {},
           getGoogleTokens,
         );
 
         const blockType = LIST_BLOCK_TYPE[call.name!];
         if (blockType && Array.isArray(result)) {
           blocks.push({ type: blockType, items: result });
+        }
+
+        if (isWriteTool(call.name!)) {
+          wroteAnything = true;
+          const failed = !!(result && typeof result === "object" && "error" in result);
+          if (!failed) succeededWrites++;
+          lastWrite.push({ name: call.name!, result });
         }
 
         responseParts.push({
@@ -963,7 +1488,7 @@ Reply style:
     return {
       reply:
         "Sorry, that took too many steps — could you rephrase or try a simpler request?",
-      blocks,
+      blocks: wroteAnything ? [] : blocks,
     };
   } catch (error: any) {
     if (error?.status === 429) {

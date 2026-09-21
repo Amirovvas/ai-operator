@@ -272,6 +272,12 @@ export const replyToGmailThread = async (
       ? headerValue(headers, "To")
       : headerValue(headers, "Reply-To") || from;
   if (!to) throw new Error("Invalid reply: recipient not found");
+  // ответ на no-reply адрес уйдёт в никуда (придёт bounce) — лучше сказать сразу
+  if (/(^|[^a-z])(no-?reply|do-?not-?reply|mailer-daemon)/i.test(extractEmail(to))) {
+    throw new Error(
+      `Invalid reply: ${extractEmail(to)} is a no-reply address and does not accept replies`,
+    );
+  }
 
   const originalId = headerValue(headers, "Message-ID");
   const references = [headerValue(headers, "References"), originalId]

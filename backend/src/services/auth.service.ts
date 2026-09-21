@@ -209,6 +209,7 @@ import { google } from "googleapis";
 export const getCalendarEvents = async (
   accessToken: any,
   refreshToken?: any,
+  options: { upcoming?: boolean } = {},
 ) => {
   const auth = createGoogleOAuthClient();
 
@@ -221,7 +222,14 @@ export const getCalendarEvents = async (
 
   const result = await calendar.events.list({
     calendarId: "primary",
-    timeMin: new Date(new Date().setDate(1)).toISOString(), // с начала месяца
+    // по умолчанию — с начала месяца; для "upcoming" — от текущего момента на
+    // 90 дней вперёд (иначе события следующего месяца были бы недоступны чату)
+    timeMin: options.upcoming
+      ? new Date().toISOString()
+      : new Date(new Date().setDate(1)).toISOString(),
+    ...(options.upcoming
+      ? { timeMax: new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString() }
+      : {}),
     maxResults: 100,
     singleEvents: true,
     orderBy: "startTime",

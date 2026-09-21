@@ -5,5 +5,5 @@ export const getAvatarUrl = (avatar?: string | null) => {
   if (avatar.startsWith("http://") || avatar.startsWith("https://")) {
     return avatar;
   }
-  return `http://localhost:5000/${avatar}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}/${avatar}`;
 };
