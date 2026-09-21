@@ -6,6 +6,7 @@ export const PUBLIC_ROUTES = [
   "/forgot-password",
   "/google-success",
   "/privacy",
+  "/terms",
 ];
 
 export const isPublicRoute = (pathname: string | null | undefined) =>
